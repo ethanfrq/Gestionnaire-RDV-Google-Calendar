@@ -1,0 +1,566 @@
+{
+  "name": "RECAP_RDV_AXIORNET",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 20
+            }
+          ]
+        }
+      },
+      "id": "6de577a0-57e2-409e-965b-e98df992502f",
+      "name": "Schedule Trigger — 20:1",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        112,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "label",
+        "operation": "getAll",
+        "returnAll": true,
+        "options": {}
+      },
+      "id": "c639d130-70df-4fc7-8cd0-87b3b64cb13f",
+      "name": "Gmail — List Labels",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        336,
+        224
+      ],
+      "webhookId": "AXIORNET_REPLACE",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "AXIORNET_REPLACE",
+          "name": "AXIORNET_REPLACE"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "keepKeyMatches",
+        "propertyName1": "name",
+        "propertyName2": "name",
+        "options": {
+          "ignoreCase": true
+        }
+      },
+      "id": "b355ed84-aef1-4e5f-accc-33b931d5a63e",
+      "name": "Select Axiornet LabelId",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        560,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "a0c9fe9a-9b24-4d7c-9a2d-1b8c57bd8e53",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": "isEmpty"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "f5d11493-01ab-4b47-9d60-4f1a94bdc2a1",
+      "name": "IF Label missing?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        784,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "label",
+        "operation": "create",
+        "name": "AXIORNET",
+        "options": {}
+      },
+      "id": "5e9f5673-4513-4ed6-b59b-2b8a96e6a2b9",
+      "name": "Gmail — Create Label (Axiornet)",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1008,
+        112
+      ],
+      "webhookId": "AXIORNET_REPLACE",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "AXIORNET_REPLACE",
+          "name": "AXIORNET_REPLACE"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "passThrough",
+        "options": {}
+      },
+      "id": "d76c5fb1-4fd4-4fb2-b72c-c04c98d4ab2f",
+      "name": "Ensure Gmail Label (Axiornet)",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        1008,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "value": "AXIORNET_REPLACE",
+          "mode": "list",
+          "cachedResultName": "AXIORNET_REPLACE"
+        },
+        "operation": "getAll",
+        "returnAll": true,
+        "options": {
+          "timeMin": "={{ $now }}",
+          "timeMax": "={{ $now.plus({ days: 7 }) }}",
+          "singleEvents": true,
+          "orderBy": "startTime"
+        }
+      },
+      "id": "4c5c44c0-9d5f-4a1a-9dd3-f8b9d5a6e1b0",
+      "name": "Google Calendar — Events next 7 days",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1,
+      "position": [
+        1232,
+        240
+      ],
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "AXIORNET_REPLACE",
+          "name": "AXIORNET_REPLACE"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "/* Code intact (aucun token sensible) */\nconst TZ = 'Europe/Paris';\nconst SUBJECT = '📌 Récap RDV — 7 prochains jours';\nconst NO_EVENTS_TEXT = 'Aucun rendez-vous prévu sur les 7 prochains jours.';\n\nfunction pad2(n) { return String(n).padStart(2, '0'); }\nfunction asParisDate(d) {\n  const fmt = new Intl.DateTimeFormat('fr-FR', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' });\n  const parts = fmt.formatToParts(d);\n  const y = parts.find(p => p.type === 'year').value;\n  const m = parts.find(p => p.type === 'month').value;\n  const da = parts.find(p => p.type === 'day').value;\n  return { y, m, da };\n}\nfunction asParisTime(d) {\n  const fmt = new Intl.DateTimeFormat('fr-FR', { timeZone: TZ, hour: '2-digit', minute: '2-digit', hour12: false });\n  const parts = fmt.formatToParts(d);\n  const hh = parts.find(p => p.type === 'hour').value;\n  const mm = parts.find(p => p.type === 'minute').value;\n  return { hh, mm };\n}\nfunction fmtDate(d) {\n  return new Intl.DateTimeFormat('fr-FR', { timeZone: TZ, weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).format(d);\n}\nfunction fmtTime(d) {\n  const t = asParisTime(d);\n  return `${t.hh}:${t.mm}`;\n}\nfunction dayKey(d) {\n  const p = asParisDate(d);\n  return `${p.y}-${p.m}-${p.da}`;\n}\nfunction escapeHtml(s = '') {\n  return String(s)\n    .replace(/&/g, '&amp;')\n    .replace(/</g, '&lt;')\n    .replace(/>/g, '&gt;')\n    .replace(/\"/g, '&quot;')\n    .replace(/'/g, '&#039;');\n}\n\nconst now = new Date();\nconst nowStr = new Intl.DateTimeFormat('fr-FR', { timeZone: TZ, dateStyle: 'full', timeStyle: 'short' }).format(now);\n\n// Normalize events\nconst prepared = items.map(i => {\n  const e = i.json;\n  const startRaw = e.start?.dateTime || e.start?.date || e.start;\n  const endRaw = e.end?.dateTime || e.end?.date || e.end;\n  const allDay = !!e.start?.date && !e.start?.dateTime;\n  const startObj = startRaw ? new Date(startRaw) : null;\n  return {\n    title: e.summary || e.title || '(Sans titre)',\n    location: e.location || '',\n    description: e.description || '',\n    htmlLink: e.htmlLink || '',\n    startObj,\n    allDay,\n  };\n}).filter(x => x.startObj instanceof Date && !isNaN(x.startObj.getTime()))\n  .sort((a, b) => a.startObj.getTime() - b.startObj.getTime());\n\nconst groups = new Map();\nfor (const ev of prepared) {\n  const k = dayKey(ev.startObj);\n  if (!groups.has(k)) groups.set(k, []);\n  groups.get(k).push(ev);\n}\n\n// Telegram\nlet telegramText = '';\nif (prepared.length === 0) {\n  telegramText = `📌 *Récap RDV (7 jours)*\\n\\n${NO_EVENTS_TEXT}`;\n} else {\n  telegramText = `📌 *Récap RDV (7 jours)*\\n_(généré le ${nowStr})_\\n`;\n  for (const [k, evs] of Array.from(groups.entries()).sort((a,b) => a[0].localeCompare(b[0]))) {\n    const headerDate = fmtDate(evs[0].startObj);\n    telegramText += `\\n\\n📅 *${headerDate}*`;\n    for (const ev of evs) {\n      const timePart = ev.allDay ? '🕘 Toute la journée' : `🕘 ${fmtTime(ev.startObj)}`;\n      const locPart = ev.location ? `\\n   📍 ${ev.location}` : '';\n      telegramText += `\\n• ${timePart} — *${ev.title}*${locPart}`;\n    }\n  }\n}\n\nfunction eventBadge(allDay) {\n  return allDay\n    ? `<span style=\"display:inline-block;padding:2px 8px;border-radius:999px;background:#111827;color:#fff;font-size:12px;\">Toute la journée</span>`\n    : `<span style=\"display:inline-block;padding:2px 8px;border-radius:999px;background:#eef2ff;color:#3730a3;font-size:12px;\">Heure</span>`;\n}\n\n// Email HTML (STYLE CARTE)\nlet emailHtml = '';\nconst headerTitle = 'Récapitulatif des RDV — Semaine à venir';\nconst subtitle = `Généré le ${escapeHtml(nowStr)} (${TZ})`;\n\nif (prepared.length === 0) {\n  emailHtml = `<!doctype html>\n<html lang=\"fr\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width\" />\n  <title>${escapeHtml(headerTitle)}</title>\n</head>\n<body style=\"margin:0;padding:0;background:#f6f7f9;font-family:Arial,Helvetica,sans-serif;\">\n  <table role=\"presentation\" width=\"100%\" cellspacing=\"0\" cellpadding=\"0\" style=\"background:#f6f7f9;padding:24px 12px;\">\n    <tr><td align=\"center\">\n      <table role=\"presentation\" width=\"600\" cellspacing=\"0\" cellpadding=\"0\" style=\"background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e7e9ee;\">\n        <tr>\n          <td style=\"padding:18px 20px;background:#111827;color:#fff;\">\n            <div style=\"font-size:14px;opacity:.9;\">RECAP RDV</div>\n            <div style=\"font-size:20px;font-weight:700;margin-top:4px;\">📌 ${escapeHtml(headerTitle)}</div>\n            <div style=\"font-size:12px;opacity:.85;margin-top:6px;\">${escapeHtml(subtitle)}</div>\n          </td>\n        </tr>\n\n        <tr>\n          <td style=\"padding:18px 20px;\">\n            <div style=\"padding:12px;border:1px solid #d1fae5;background:#ecfdf5;border-radius:10px;color:#065f46;font-size:14px;line-height:1.5;\">\n              <strong>✅ Aucun rendez-vous</strong><br/>\n              ${escapeHtml(NO_EVENTS_TEXT)}\n            </div>\n\n            <p style=\"margin:14px 0 0;color:#6b7280;font-size:12px;line-height:1.5;\">\n              Envoyé automatiquement par\n              <strong>AXIORNET</strong>.\n            </p>\n          </td>\n        </tr>\n\n        <tr>\n          <td style=\"padding:14px 20px;background:#f9fafb;border-top:1px solid #e7e9ee;color:#6b7280;font-size:12px;\">\n            Axiornet — Calendar Recap\n          </td>\n        </tr>\n      </table>\n    </td></tr>\n  </table>\n</body>\n</html>`;\n} else {\n  let body = `\n<!doctype html>\n<html lang=\"fr\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width\" />\n  <title>${escapeHtml(headerTitle)}</title>\n</head>\n<body style=\"margin:0;padding:0;background:#f6f7f9;font-family:Arial,Helvetica,sans-serif;\">\n  <table role=\"presentation\" width=\"100%\" cellspacing=\"0\" cellpadding=\"0\" style=\"background:#f6f7f9;padding:24px 12px;\">\n    <tr><td align=\"center\">\n\n      <table role=\"presentation\" width=\"600\" cellspacing=\"0\" cellpadding=\"0\" style=\"background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e7e9ee;\">\n        <tr>\n          <td style=\"padding:18px 20px;background:#111827;color:#fff;\">\n            <div style=\"font-size:14px;opacity:.9;\">n8n — RECAP_RDV</div>\n            <div style=\"font-size:20px;font-weight:700;margin-top:4px;\">📌 ${escapeHtml(headerTitle)}</div>\n            <div style=\"font-size:12px;opacity:.85;margin-top:6px;\">${escapeHtml(subtitle)}</div>\n          </td>\n        </tr>\n\n        <tr>\n          <td style=\"padding:18px 20px;\">\n\n            <div style=\"padding:12px;border:1px solid #e7e9ee;background:#f9fafb;border-radius:10px;\">\n              <div style=\"font-size:13px;color:#374151;margin-bottom:6px;\"><strong>Résumé</strong></div>\n              <div style=\"font-size:13px;color:#111827;line-height:1.5;\">\n                <div>• Période : <strong>7 jours</strong></div>\n                <div>• Total RDV : <strong>${prepared.length}</strong></div>\n              </div>\n            </div>\n`;\n\n  for (const [k, evs] of Array.from(groups.entries()).sort((a,b) => a[0].localeCompare(b[0]))) {\n    const dayTitle = fmtDate(evs[0].startObj);\n\n    body += `\n      <div style=\"margin-top:16px;\">\n        <div style=\"font-size:15px;font-weight:700;color:#111827;margin:0 0 8px;\">\n          📅 ${escapeHtml(dayTitle)}\n        </div>\n\n        <table role=\"presentation\" width=\"100%\" cellspacing=\"0\" cellpadding=\"0\" style=\"border-collapse:collapse;border:1px solid #e7e9ee;border-radius:10px;overflow:hidden;\">\n          <thead>\n            <tr>\n              <th align=\"left\" style=\"padding:10px 12px;background:#f3f4f6;border-bottom:1px solid #e7e9ee;font-size:12px;color:#374151;width:130px;\">Heure</th>\n              <th align=\"left\" style=\"padding:10px 12px;background:#f3f4f6;border-bottom:1px solid #e7e9ee;font-size:12px;color:#374151;\">Rendez-vous</th>\n              <th align=\"left\" style=\"padding:10px 12px;background:#f3f4f6;border-bottom:1px solid #e7e9ee;font-size:12px;color:#374151;width:160px;\">Lieu</th>\n            </tr>\n          </thead>\n          <tbody>\n    `;\n\n    for (const ev of evs) {\n      const timeTxt = ev.allDay ? 'Toute la journée' : fmtTime(ev.startObj);\n      const title = escapeHtml(ev.title);\n      const loc = escapeHtml(ev.location);\n      const link = ev.htmlLink\n        ? `<div style=\"margin-top:6px;\"><a href=\"${escapeHtml(ev.htmlLink)}\" style=\"color:#2563eb;text-decoration:none;\">Ouvrir dans Google Calendar →</a></div>`\n        : '';\n      const desc = ev.description\n        ? `<div style=\"margin-top:6px;color:#6b7280;font-size:12px;line-height:1.45;\">${escapeHtml(ev.description).slice(0, 350)}${ev.description.length > 350 ? '…' : ''}</div>`\n        : '';\n\n      body += `\n        <tr>\n          <td style=\"padding:10px 12px;border-bottom:1px solid #e7e9ee;vertical-align:top;\">\n            <div style=\"font-size:13px;color:#111827;font-weight:700;\">${escapeHtml(timeTxt)}</div>\n            <div style=\"margin-top:6px;\">${eventBadge(ev.allDay)}</div>\n          </td>\n          <td style=\"padding:10px 12px;border-bottom:1px solid #e7e9ee;vertical-align:top;\">\n            <div style=\"font-size:13px;color:#111827;font-weight:700;\">${title}</div>\n            ${link}\n            ${desc}\n          </td>\n          <td style=\"padding:10px 12px;border-bottom:1px solid #e7e9ee;vertical-align:top;\">\n            ${loc ? `<div style=\\\"font-size:13px;color:#111827;\\\">📍 ${loc}</div>` : `<div style=\\\"font-size:13px;color:#9ca3af;\\\">—</div>`}\n          </td>\n        </tr>\n      `;\n    }\n\n    body += `\n          </tbody>\n        </table>\n      </div>\n    `;\n  }\n\n  body += `\n            <p style=\"margin:14px 0 0;color:#6b7280;font-size:12px;line-height:1.5;\">\n              Envoyé automatiquement par le workflow <strong>RECAP_RDV</strong>.\n            </p>\n\n          </td>\n        </tr>\n\n        <tr>\n          <td style=\"padding:14px 20px;background:#f9fafb;border-top:1px solid #e7e9ee;color:#6b7280;font-size:12px;\">\n            Axiornet — Calendar Recap\n          </td>\n        </tr>\n\n      </table>\n\n    </td></tr>\n  </table>\n</body>\n</html>`;\n\n  emailHtml = body;\n}\n\nreturn [{ json: { telegramText, emailSubject: SUBJECT, emailHtml } }];"
+      },
+      "id": "fcf69dc9-2c72-4901-8b86-3cd96c5f796a",
+      "name": "Format Recap (Telegram + HTML)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1648,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "AXIORNET_REPLACE",
+        "subject": "={{ $json.emailSubject }}",
+        "message": "={{ $json.emailHtml }}",
+        "options": {}
+      },
+      "id": "7262b065-90bc-415f-96b5-9564160f8776",
+      "name": "Gmail — Send Recap (Ethan)",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1856,
+        240
+      ],
+      "webhookId": "AXIORNET_REPLACE",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "AXIORNET_REPLACE",
+          "name": "AXIORNET_REPLACE"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "AXIORNET_REPLACE",
+        "subject": "={{ $('Format Recap (Telegram + HTML)').item.json.emailSubject }}",
+        "message": "={{ $('Format Recap (Telegram + HTML)').item.json.emailHtml }}",
+        "options": {}
+      },
+      "id": "0665f474-cf80-4db6-a0b6-b5d56467a52c",
+      "name": "Gmail — Send Recap (Axiornet)",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        2048,
+        240
+      ],
+      "webhookId": "AXIORNET_REPLACE",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "AXIORNET_REPLACE",
+          "name": "AXIORNET_REPLACE"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "AXIORNET_REPLACE",
+        "labelIds": [
+          "AXIORNET_REPLACE"
+        ]
+      },
+      "id": "df14664d-7c75-49d8-84b7-2c4acc96b5ab",
+      "name": "Gmail — Add Label (Axiornet) [Recap]",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        2224,
+        240
+      ],
+      "alwaysOutputData": true,
+      "webhookId": "AXIORNET_REPLACE",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "AXIORNET_REPLACE",
+          "name": "AXIORNET_REPLACE"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "content": "## CALENDAR RECAPITULATIF \n🔔 RECAP_RDV automatise un récapitulatif des rendez-vous : chaque jour à 20h, le workflow récupère les événements \ndes 7 prochains jours depuis Google Calendar et envoie un email récap (Axiornet + copie). Simple, propre, et toujours à jour.",
+        "height": 400,
+        "width": 2470
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        0,
+        32
+      ],
+      "typeVersion": 1,
+      "id": "2eef7b1e-0571-4381-939c-955258cde373",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "chatId": "AXIORNET_REPLACE",
+        "text": "={{ $json.telegramText }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1856,
+        80
+      ],
+      "id": "8eeb494f-ac66-4446-a835-f316680d454f",
+      "name": "Recap TELEGRAM",
+      "webhookId": "AXIORNET_REPLACE",
+      "credentials": {
+        "telegramApi": {
+          "id": "AXIORNET_REPLACE",
+          "name": "AXIORNET_REPLACE"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 20
+            }
+          ]
+        }
+      },
+      "id": "f1d002f2-4331-428a-b6c2-3ace1e0e3ee9",
+      "name": "Schedule Trigger — 20h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        112,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\nconst now = new Date();\nconst dateKey = now.toISOString().slice(0, 10);\nconst stats = staticData.daily?.[dateKey] || { total: 0, important: 0 };\n\nconst subject = `Récap emails — ${dateKey}`;\n\nconst html = `<!doctype html>\n<html lang=\"fr\"><head><meta charset=\"utf-8\" />\n<meta name=\"viewport\" content=\"width=device-width\" />\n<title>${subject}</title></head>\n<body style=\"margin:0;padding:0;background:#f6f7f9;font-family:Arial,Helvetica,sans-serif;\">\n  <table role=\"presentation\" width=\"100%\" cellspacing=\"0\" cellpadding=\"0\" style=\"background:#f6f7f9;padding:24px 12px;\">\n    <tr><td align=\"center\">\n      <table role=\"presentation\" width=\"600\" cellspacing=\"0\" cellpadding=\"0\" style=\"background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e7e9ee;\">\n        <tr>\n          <td style=\"padding:18px 20px;background:#111827;color:#fff;\">\n            <div style=\"font-size:20px;font-weight:700;margin-top:4px;\">📊 Récapitulatif du jour</div>\n            <div style=\"font-size:12px;opacity:.85;margin-top:6px;\">Date : ${dateKey} (Europe/Paris)</div>\n          </td>\n        </tr>\n        <tr>\n          <td style=\"padding:18px 20px;\">\n            <div style=\"padding:12px;border:1px solid #e7e9ee;background:#f9fafb;border-radius:10px;\">\n              <div style=\"font-size:13px;color:#374151;margin-bottom:6px;\"><strong>Statistiques</strong></div>\n              <div style=\"font-size:14px;color:#111827;line-height:1.7;\">\n                <div>📩 Total reçus : <strong>${stats.total}</strong></div>\n                <div>⭐ Importants : <strong>${stats.important}</strong></div>\n              </div>\n            </div>\n            <p style=\"margin:14px 0 0;color:#6b7280;font-size:12px;line-height:1.5;\">Email quotidien et automatique</p>\n          </td>\n        </tr>\n        <tr>\n          <td style=\"padding:14px 20px;background:#f9fafb;border-top:1px solid #e7e9ee;color:#6b7280;font-size:12px;\">Axiornet — axiornet.com</td>\n        </tr>\n      </table>\n    </td></tr>\n  </table>\n</body></html>`;\n\nreturn [{ json: { subject, html } }];"
+      },
+      "id": "0631b2ad-a949-423a-a923-4a04371173be",
+      "name": "Code — Build recap email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        336,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## RECAPITULATIF DAY 📲\n",
+        "height": 304,
+        "width": 976
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        0,
+        544
+      ],
+      "typeVersion": 1,
+      "id": "6740c38f-0852-4d6a-9e25-cd19b0dfd2eb",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "sendTo": "AXIORNET_REPLACE",
+        "subject": "={{ $json.subject }}",
+        "message": "={{ $json.html }}",
+        "options": {}
+      },
+      "id": "1bb07f7e-7f38-481a-8254-a1af75b0cb7b",
+      "name": "Gmail — Send Recap (Axiornet)1",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        560,
+        640
+      ],
+      "webhookId": "AXIORNET_REPLACE",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "AXIORNET_REPLACE",
+          "name": "AXIORNET_REPLACE"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "AXIORNET_REPLACE",
+        "subject": "={{ $('Code — Build recap email').item.json.subject }}",
+        "message": "={{ $('Code — Build recap email').item.json.html }}",
+        "options": {}
+      },
+      "id": "c5c9cb67-4811-42da-86a1-b0f88ffa2db1",
+      "name": "Gmail — Send Recap (Ethan)1",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        768,
+        640
+      ],
+      "webhookId": "AXIORNET_REPLACE",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "AXIORNET_REPLACE",
+          "name": "AXIORNET_REPLACE"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger — 20:1": {
+      "main": [
+        [
+          {
+            "node": "Gmail — List Labels",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail — List Labels": {
+      "main": [
+        [
+          {
+            "node": "Select Axiornet LabelId",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Select Axiornet LabelId": {
+      "main": [
+        [
+          {
+            "node": "IF Label missing?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Label missing?": {
+      "main": [
+        [
+          {
+            "node": "Gmail — Create Label (Axiornet)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ensure Gmail Label (Axiornet)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail — Create Label (Axiornet)": {
+      "main": [
+        [
+          {
+            "node": "Ensure Gmail Label (Axiornet)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ensure Gmail Label (Axiornet)": {
+      "main": [
+        [
+          {
+            "node": "Google Calendar — Events next 7 days",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Calendar — Events next 7 days": {
+      "main": [
+        [
+          {
+            "node": "Format Recap (Telegram + HTML)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Recap (Telegram + HTML)": {
+      "main": [
+        [
+          {
+            "node": "Gmail — Send Recap (Ethan)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail — Send Recap (Ethan)": {
+      "main": [
+        [
+          {
+            "node": "Gmail — Send Recap (Axiornet)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail — Send Recap (Axiornet)": {
+      "main": [
+        [
+          {
+            "node": "Gmail — Add Label (Axiornet) [Recap]",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recap TELEGRAM": {
+      "main": [
+        []
+      ]
+    },
+    "Schedule Trigger — 20h": {
+      "main": [
+        [
+          {
+            "node": "Code — Build recap email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code — Build recap email": {
+      "main": [
+        [
+          {
+            "node": "Gmail — Send Recap (Axiornet)1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail — Send Recap (Axiornet)1": {
+      "main": [
+        [
+          {
+            "node": "Gmail — Send Recap (Ethan)1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "timeSavedMode": "dynamic",
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": "34Q0LLo9G6B5Ckcse3VLj",
+    "saveManualExecutions": true,
+    "executionTimeout": 3600
+  },
+  "versionId": "fe3a46cf-1b51-4170-b159-50a78aa8e3d9",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a7fb9323bfc854a4933653077394e619b35ed01d3571530e196fed9dfffe46a5"
+  },
+  "id": "fHUtSzYA4ls4HYERAcjDB",
+  "tags": [
+    {
+      "updatedAt": "2026-01-13T10:07:52.227Z",
+      "createdAt": "2026-01-13T10:07:52.227Z",
+      "id": "68elYh5KYshWSXkn",
+      "name": "AXIORNET"
+    },
+    {
+      "updatedAt": "2026-01-13T10:07:44.667Z",
+      "createdAt": "2026-01-13T10:07:44.667Z",
+      "id": "wFj7jKmX6vIYH7pm",
+      "name": "ETHAN"
+    }
+  ]
+}
