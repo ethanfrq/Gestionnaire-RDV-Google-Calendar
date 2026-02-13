@@ -51,7 +51,7 @@ Le workflow est configuré pour le fuseau horaire : `Europe/Paris`.
 ---
 
 ## 🚀 Installation
-1.  Téléchargez le fichier `RECAP_RDV_AXIORNET-2.json`.
+1.  Téléchargez le fichier `ManagerCalendarGoogle.json`.
 2.  Dans n8n, cliquez sur **Import from File**.
 3.  Associez vos propres **Credentials** aux nœuds Gmail, Calendar et Telegram.
 4.  Activez le workflow pour lancer la planification.
