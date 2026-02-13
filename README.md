@@ -1,6 +1,6 @@
 # 📅 Workflow n8n : RECAP_RDV_AXIORNET
 
-![n8n](https://img.shields.io/badge/n8n-v1.x-red?style=flat-square&logo=n8n)
+![n8n](https://img.shields.io/badge/n8n-v1.1-red?style=flat-square&logo=n8n)
 ![Author](https://img.shields.io/badge/Author-Axiornet-blue?style=flat-square)
 ![Status](https://img.shields.io/badge/Status-Active-green?style=flat-square)
 
